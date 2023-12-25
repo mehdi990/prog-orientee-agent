@@ -4,12 +4,7 @@ import issia23.agents.UserAgent;
 import issia23.data.Product;
 import jade.gui.GuiEvent;
 
-import javax.swing.JFrame;
-import javax.swing.JTextArea;
-import javax.swing.JComboBox;
-import javax.swing.JButton;
-import javax.swing.JScrollPane;
-import javax.swing.JPanel;
+import javax.swing.*;
 import java.awt.BorderLayout;
 import java.awt.GridLayout;
 import java.awt.Dimension;
@@ -67,8 +62,9 @@ public class UserAgentWindow extends JFrame implements ActionListener {
         buildGui();
         this.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent windowEvent) {
-                GuiEvent ev = new GuiEvent(this, QUIT_EVENT);
-                myAgent.postGuiEvent(ev);
+                    GuiEvent ev = new GuiEvent(this, QUIT_EVENT);
+                    myAgent.postGuiEvent(ev);
+
             }
         });
         setVisible(true);
@@ -105,7 +101,7 @@ public class UserAgentWindow extends JFrame implements ActionListener {
         JScrollPane jScrollPane = new JScrollPane(jTextArea);
         getContentPane().add(BorderLayout.CENTER, jScrollPane);
         JPanel bottomPanel = new JPanel(new GridLayout(0, 1));
-        jbutton = new JButton("go");
+        jbutton = new JButton("Start Repair Process");
         comboProducts = new JComboBox<>();
         bottomPanel.add(jbutton);
         bottomPanel.add(comboProducts);
@@ -118,28 +114,38 @@ public class UserAgentWindow extends JFrame implements ActionListener {
      * add a string to the text area
      */
     public void println(String chaine) {
-        String texte = jTextArea.getText();
-        texte = texte + chaine + "\n";
-        jTextArea.setText(texte);
-        jTextArea.setCaretPosition(texte.length());
+        //String texte = jTextArea.getText();
+        //texte = texte + chaine + "\n";
+        SwingUtilities.invokeLater(() -> {
+            jTextArea.append(chaine + "\n");
+            jTextArea.setCaretPosition(jTextArea.getDocument().getLength());
+        });
+
+
     }
 
     /**
      * add a formatted string to the text area
      */
     public void printf(String format, Object[] tabO) {
-        String texte = jTextArea.getText();
-        texte = texte + format.formatted(tabO) + "\n";
-        jTextArea.setText(texte);
-        jTextArea.setCaretPosition(texte.length());
+        println(String.format(format, tabO));
+        //String texte = jTextArea.getText();
+        //texte = texte + format.formatted(tabO) + "\n";
+        //jTextArea.setText(texte);
+        //jTextArea.setCaretPosition(texte.length());
     }
 
     /**
      * SEND A MESSAGE TO THE AGENT
      */
     public void actionPerformed(ActionEvent evt) {
-        GuiEvent ev = new GuiEvent(this, OK_EVENT);
-        myAgent.postGuiEvent(ev);
+        Product selectProduct = (Product) comboProducts.getSelectedItem();
+        if (selectProduct != null){
+            GuiEvent ev = new GuiEvent(selectProduct, OK_EVENT);
+            myAgent.postGuiEvent(ev);
+        } else {
+            println("Please select a product.");
+        }
     }
 
     public void setBackgroundTextColor(Color c) {
@@ -151,16 +157,18 @@ public class UserAgentWindow extends JFrame implements ActionListener {
     }
 
     public void setButtonActivated(boolean buttonActivated) {
+        this.buttonActivated = buttonActivated;
+        jbutton.setEnabled(buttonActivated);
+        jbutton.setText(buttonActivated ? "Start Repair Process" : "--");
         if (buttonActivated) {
-            jbutton.setEnabled(true);
-            jbutton.setText("-- go --");
+            //jbutton.setText("-- go --");
             jbutton.addActionListener(this);
         } else {
-            jbutton.setEnabled(false);
-            jbutton.setText("--");
-            jbutton.addActionListener(null);
+            jbutton.removeActionListener(this);
+            //jbutton.setEnabled(false);
+            //jbutton.setText("--");
+            //jbutton.addActionListener(null);
         }
-        this.buttonActivated = buttonActivated;
     }
 
     public void addProductToCombo(Product p) {

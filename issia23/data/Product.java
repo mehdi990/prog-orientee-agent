@@ -10,6 +10,10 @@ import java.util.List;
  * @author emmanueladam
  * */
 public class Product implements Serializable {
+    private String repairState;
+
+
+
 
     /**nb of existing products*/
     static int nbProducts = 0;
@@ -33,6 +37,26 @@ public class Product implements Serializable {
         price = type.getStandardPrice()*(1.+Math.random()*.2);
         id = ++nbProducts;
     }
+
+    public boolean isRepairable() {
+        // Exemple de logique de réparabilité
+        // Un produit est réparable s'il n'est pas "obsolète" ou trop endommagé
+        boolean notObsolete = !repairState.equals("obsolète");
+        boolean repairableDamage = !repairState.equals("fortement endommagé");
+        // Ajoutez ici d'autres conditions si nécessaire
+
+        return notObsolete && repairableDamage;
+    }
+
+    // Méthodes pour définir et obtenir l'état de réparabilité
+    public void setRepairState(String state) {
+        this.repairState = state;
+    }
+
+    public String getRepairState() {
+        return repairState;
+    }
+
 
     @Override
     public String toString() {
@@ -70,6 +94,9 @@ public class Product implements Serializable {
     public double getPrice() {
         return price;
     }
+
+
+
 
     /**check the creation of the list of products.
      * (you can store the creation in a file and reload it later)*/
