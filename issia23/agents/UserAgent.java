@@ -25,8 +25,12 @@ import java.util.*;
  * @author emmanueladam
  * */
 public class UserAgent extends GuiAgent {
+    // Map pour stocker les propositions reçues de différents agents avec leurs dates.
     private Map<AID, LocalDate> receivedProposals = new HashMap<>();
+
+    // Flag pour déterminer si l'agent est toujours en train de collecter des propositions.
     private boolean isCollectingProposals = true;
+    // Seuil de gravité pour déterminer si un produit est réparable ou non.
     private static final int SOME_SEVERITY_THRESHOLD = 5;
 
     /**list of products to repair*/
@@ -35,14 +39,18 @@ public class UserAgent extends GuiAgent {
     int skill;
     /**gui window*/
     UserAgentWindow window;
+
+    /** Méthode setup appelée lors de l'initialisation de l'agent.*/
     @Override
     public void setup() {
+        // Configuration de l'interface utilisateur.
         this.window = new UserAgentWindow(getLocalName(), this);
         window.setButtonActivated(true);
-        Random hasard = new Random();
+        Random hasard = new Random();// Détermination aléatoire de la compétence de réparation.
         skill = hasard.nextInt(5);
         println("hello, I have a skill = " + skill);
 
+        // Génération aléatoire de la liste des produits à réparer.
         products = new ArrayList<>();
         int nbTypeOfProducts = ProductType.values().length;
         int nbPoductsByType = Product.NB_PRODS / nbTypeOfProducts;
@@ -50,7 +58,8 @@ public class UserAgent extends GuiAgent {
         for (int i = 0; i < nbTypeOfProducts; i++) {
             if (hasard.nextBoolean()) {
                 Product product = existingProducts.get(hasard.nextInt(nbPoductsByType) + (i * nbPoductsByType));
-                product.setRepairState(determineProductState(product)); // Définir l'état de réparabilité
+                // Définir l'état de réparabilité.
+                product.setRepairState(determineProductState(product));
                 products.add(product);
             }
         }
@@ -59,13 +68,16 @@ public class UserAgent extends GuiAgent {
             product.setRepairState(determineProductState(product));
             products.add(product);
         }
+        // Ajout des produits à l'interface utilisateur et affichage dans la console.
         window.addProductsToCombo(products);
         println("Here are my objects : ");
         products.forEach(p -> println("\t" + p));
 
+        // Ajout de différents comportements à cet agent.
         addBehaviour(new SendRepairRequestBehaviour());
         addBehaviour(new HandleCFPResponsesBehaviour());
 
+        /** Ajout d'un comportement pour gérer la décision après la sélection.*/
         addBehaviour(new WakerBehaviour(this, 10000) {
             @Override
             protected void onWake() {
@@ -245,7 +257,7 @@ public class UserAgent extends GuiAgent {
         List<AID> distributors = new ArrayList<>();
         DFAgentDescription template = new DFAgentDescription();
         ServiceDescription sd = new ServiceDescription();
-        sd.setType("distributor-service");  // Assurez-vous que ce type correspond à celui enregistré par les DistributorAgent
+        sd.setType("distributor-service");
         template.addServices(sd);
 
         try {
