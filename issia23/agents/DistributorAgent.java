@@ -1,5 +1,7 @@
 package issia23.agents;
 
+import issia23.data.Product;
+import issia23.data.ProductType;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.gui.AgentWindowed;
@@ -9,6 +11,7 @@ import jade.lang.acl.MessageTemplate;
 
 import java.awt.*;
 import java.util.*;
+import java.util.List;
 
 /**
  * Cette classe représente un agent distributeur dans une simulation JADE.
@@ -18,9 +21,8 @@ import java.util.*;
  */
 
 public class DistributorAgent extends AgentWindowed {
-    // Ensemble des produits disponibles pour le remplacement
-    private Set<String> availableProducts;
-    // Délais de livraison estimés pour chaque produit
+// Liste des produits disponibles pour le remplacement
+    private List<Product> availableProducts;    // Délais de livraison estimés pour chaque produit
     private Map<String, Integer> productDeliveryTimes;
 
     protected void setup() {
@@ -29,14 +31,16 @@ public class DistributorAgent extends AgentWindowed {
         window.setBackgroundTextColor(Color.CYAN);
         println("Hello, I am a distributor agent.");
 
-        // Initialisation des produits disponibles et des délais de livraison
-        availableProducts = new HashSet<>(Arrays.asList("Mouse", "Screen", "CoffeeMaker", "WashingMachine", "Dishwasher", "VacuumCleaner"));
+        // Initialisation des produits disponibles
+        availableProducts = new ArrayList<>();
+
+        // Exemple d'ajout de produits à la liste
+        availableProducts.add(new Product("Mouse", ProductType.Mouse));
+        availableProducts.add(new Product("CoffeeMaker", ProductType.coffeeMaker));
+
         productDeliveryTimes = new HashMap<>();
-        productDeliveryTimes.put("Mouse", 2); // Exemple : 2 jours pour livrer une souris
-        productDeliveryTimes.put("Screen", 5); // Exemple : 5 jours pour livrer un écran
+        productDeliveryTimes.put("Mouse", 2);
         productDeliveryTimes.put("CoffeeMaker", 3);
-        productDeliveryTimes.put("Dishwasher", 4);
-        productDeliveryTimes.put("WashingMachine", 6);
 
 
 
@@ -55,21 +59,25 @@ public class DistributorAgent extends AgentWindowed {
                 String content = msg.getContent();
                 ACLMessage reply = msg.createReply();
 
+                boolean productFound = false;
                 // Vérification de la disponibilité du produit demandé
-                if (availableProducts.contains(content)) {
-                    reply.setPerformative(ACLMessage.PROPOSE);
-                    int deliveryTime = productDeliveryTimes.getOrDefault(content, 7); // Utilisation du délai par défaut si non spécifié
-                    String responseContent = "Product available for replacement: " + content +
-                            ". Estimated delivery time: " + deliveryTime + " days.";
-                    reply.setContent(responseContent);
-                } else {
-                    // Envoi d'une réponse de refus si le produit n'est pas disponible
+                for (Product product : availableProducts) {
+                    if (product.getName().equals(content)) {
+                        reply.setPerformative(ACLMessage.PROPOSE);
+                        int deliveryTime = productDeliveryTimes.getOrDefault(content, 7);
+                        String responseContent = "Product available: " + content +
+                                ". Estimated delivery time: " + deliveryTime + " days.";
+                        reply.setContent(responseContent);
+                        productFound = true;
+                        break;
+                    }
+                }
+                if (!productFound) {
                     reply.setPerformative(ACLMessage.REFUSE);
-                    reply.setContent("Product not available for replacement: " + content);
+                    reply.setContent("Product not available: " + content);
                 }
                 myAgent.send(reply);
             } else {
-                // Si aucun message correspondant n'est reçu, bloquer le comportement
                 block();
             }
         }
