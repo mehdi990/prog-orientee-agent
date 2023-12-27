@@ -87,6 +87,14 @@ public class UserAgentWindow extends JFrame implements ActionListener {
         myAgent = _a;
     }
 
+    /**
+     * Renvoie le produit sélectionné dans la JComboBox.
+     * @return le produit sélectionné, ou null si aucun produit n'est sélectionné.
+     */
+    public Product getSelectedProduct() {
+        return (Product) comboProducts.getSelectedItem();
+    }
+
 
     /**
      * build the gui :

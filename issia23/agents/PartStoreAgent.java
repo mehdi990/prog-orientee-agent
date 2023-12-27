@@ -29,7 +29,7 @@ public class PartStoreAgent extends AgentWindowed {
         // Configuration de l'interface utilisateur graphique pour cet agent.
         this.window = new SimpleWindow4Agent(getLocalName(), this);
         this.window.setBackgroundTextColor(Color.LIGHT_GRAY);
-        AgentServicesTools.register(this, "repair", "partstore");
+        AgentServicesTools.register(this, "repair", "part-store");
         println("hello, I'm just registered as a parts-store");
         println("do you want some special parts ?");
 
@@ -49,7 +49,7 @@ public class PartStoreAgent extends AgentWindowed {
         parts.forEach(p -> println("\t" + p));
 
         // Enregistrement de l'agent dans les pages jaunes JADE.
-        AgentServicesTools.register(this, "repair", "partstore");
+        AgentServicesTools.register(this, "repair", "part-store");
 
         // Ajout d'un comportement pour écouter et répondre aux demandes de pièces.
         addBehaviour(new HandlePartRequestsBehaviour());
@@ -59,6 +59,8 @@ public class PartStoreAgent extends AgentWindowed {
 
     /** Classe interne définissant le comportement pour gérer les demandes de pièces.*/
     private class HandlePartRequestsBehaviour extends CyclicBehaviour {
+        // Time cost in days for part delivery
+        private static final int DELIVERY_TIME_COST = 2;
         @Override
         public void action() {
             // Filtrage des messages pour les demandes de pièces.
@@ -70,11 +72,15 @@ public class PartStoreAgent extends AgentWindowed {
                 ACLMessage reply = msg.createReply();
 
                 // Vérification de la disponibilité de la pièce demandée.
-                boolean partAvailable = parts.stream().anyMatch(p -> p.getName().equals(requestedPart));
-                if (partAvailable) {
+                Part availablePart = parts.stream().filter(p -> p.getName().equals(requestedPart)).findFirst().orElse(null);
+                if (availablePart != null) {
                     // Si la pièce est disponible.
                     reply.setPerformative(ACLMessage.PROPOSE);
-                    reply.setContent("Part available: " + requestedPart);
+                    String responseContent = String.format("Part available: %s. Estimated delivery time: %d days. Cost: %.2f€",
+                            availablePart.getName(),
+                            DELIVERY_TIME_COST,
+                            availablePart.getStandardPrice());
+                    reply.setContent(responseContent);
                 } else {
                     // Refus si la pièce n'est pas disponible.
                     reply.setPerformative(ACLMessage.REFUSE);

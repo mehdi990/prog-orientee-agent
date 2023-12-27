@@ -19,6 +19,8 @@ public class RepairCoffeeAgent extends AgentWindowed {
 
     /** Définition de la classe RepairCoffeeAgent, un type d'agent dans JADE spécialisé dans la réparation.*/
     List<ProductType> specialities;
+    private static final int TIME_COST = 3; // Time cost in days for repair coffee
+
 
     @Override
     public void setup() {
@@ -91,9 +93,10 @@ public class RepairCoffeeAgent extends AgentWindowed {
                     if (isValidProductType(requestedRepair) && specialities.contains(requestedType)) {
                         // Si l'agent peut réparer le type de produit demandé.
                         reply.setPerformative(ACLMessage.PROPOSE);
-                        LocalDate repairDate = LocalDate.now().plusDays(new Random().nextInt(3) + 1);
-                        String responseContent = "Date de réparation proposée : " + repairDate;
-                        responseContent += ". Coût estimé : " + calculateEstimatedCost(requestedType);
+                        LocalDate repairDate = LocalDate.now().plusDays(TIME_COST);
+                        String responseContent = "Proposed repair date: " + repairDate +
+                                ". Estimated cost: " + calculateEstimatedCost(requestedType) +
+                                ". Time cost: " + TIME_COST + " days.";
                         reply.setContent(responseContent);
                     } else {
                         // Refus si l'agent ne peut pas réparer ce type de produit.

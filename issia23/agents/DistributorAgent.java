@@ -4,6 +4,9 @@ import issia23.data.Product;
 import issia23.data.ProductType;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.domain.DFService;
+import jade.domain.FIPAAgentManagement.DFAgentDescription;
+import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.gui.AgentWindowed;
 import jade.gui.SimpleWindow4Agent;
 import jade.lang.acl.ACLMessage;
@@ -21,9 +24,10 @@ import java.util.List;
  */
 
 public class DistributorAgent extends AgentWindowed {
-// Liste des produits disponibles pour le remplacement
-    private List<Product> availableProducts;    // Délais de livraison estimés pour chaque produit
-    private Map<String, Integer> productDeliveryTimes;
+    // Liste des produits disponibles pour le remplacement
+    private List<Product> availableProducts;
+    // Délai de livraison standard pour tous les produits (en jours)
+    private static final int STANDARD_DELIVERY_TIME = 1;
 
     protected void setup() {
         // Initialisation de l'interface utilisateur de l'agent
@@ -38,11 +42,18 @@ public class DistributorAgent extends AgentWindowed {
         availableProducts.add(new Product("Mouse", ProductType.Mouse));
         availableProducts.add(new Product("CoffeeMaker", ProductType.coffeeMaker));
 
-        productDeliveryTimes = new HashMap<>();
-        productDeliveryTimes.put("Mouse", 2);
-        productDeliveryTimes.put("CoffeeMaker", 3);
-
-
+        // Enregistrement dans le Directory Facilitator (DF)
+        DFAgentDescription dfd = new DFAgentDescription();
+        dfd.setName(getAID());
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType("product-distribution");
+        sd.setName(getLocalName() + "-product-distribution");
+        dfd.addServices(sd);
+        try {
+            DFService.register(this, dfd);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         // Ajout du comportement pour écouter et traiter les demandes de remplacement
         addBehaviour(new HandleReplacementRequest());
@@ -64,9 +75,9 @@ public class DistributorAgent extends AgentWindowed {
                 for (Product product : availableProducts) {
                     if (product.getName().equals(content)) {
                         reply.setPerformative(ACLMessage.PROPOSE);
-                        int deliveryTime = productDeliveryTimes.getOrDefault(content, 7);
+                        // Utiliser la constante STANDARD_DELIVERY_TIME pour le délai de livraison
                         String responseContent = "Product available: " + content +
-                                ". Estimated delivery time: " + deliveryTime + " days.";
+                                ". Estimated delivery time: " + STANDARD_DELIVERY_TIME + " days.";
                         reply.setContent(responseContent);
                         productFound = true;
                         break;
@@ -81,6 +92,17 @@ public class DistributorAgent extends AgentWindowed {
                 block();
             }
         }
+    }
+
+    @Override
+    public void takeDown() {
+        // Déréférencement du Directory Facilitator (DF)
+        try {
+            DFService.deregister(this);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        println("Distributor-agent " + getAID().getName() + " terminating.");
     }
 
 }
