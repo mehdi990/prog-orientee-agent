@@ -17,6 +17,7 @@ import jade.gui.GuiAgent;
 import jade.gui.GuiEvent;
 import jade.lang.acl.MessageTemplate;
 
+import javax.swing.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.*;
@@ -32,6 +33,8 @@ public class UserAgent extends GuiAgent {
     private boolean isCollectingProposals = true;
     // Seuil de gravité pour déterminer si un produit est réparable ou non.
     private static final int SOME_SEVERITY_THRESHOLD = 5;
+
+
 
     /**list of products to repair*/
     List<Product> products;
@@ -68,15 +71,15 @@ public class UserAgent extends GuiAgent {
             product.setRepairState(determineProductState(product));
             products.add(product);
         }
+        println("Generated " + products.size() + " products for repair. Here are my objects: ");
+        products.forEach(p -> println("\t" + p));
+
         // Ajout des produits à l'interface utilisateur et affichage dans la console.
         window.addProductsToCombo(products);
-        println("Here are my objects : ");
-        products.forEach(p -> println("\t" + p));
 
         // Ajout de différents comportements à cet agent.
         addBehaviour(new SendRepairRequestBehaviour());
         addBehaviour(new HandleCFPResponsesBehaviour());
-
         /** Ajout d'un comportement pour gérer la décision après la sélection.*/
         addBehaviour(new WakerBehaviour(this, 10000) {
             @Override
@@ -90,45 +93,50 @@ public class UserAgent extends GuiAgent {
         addBehaviour(new PostSelectionBehaviour());
     }
 
+    private List<AID> findRepairCoffeeAgents() {
+        List<AID> agents = new ArrayList<>();
+        DFAgentDescription template = new DFAgentDescription();
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType("repair");
+        sd.setName("coffee");
+        template.addServices(sd);
+
+        try {
+            DFAgentDescription[] result = DFService.search(this, template);
+            for (DFAgentDescription agentDesc : result) {
+                agents.add(agentDesc.getName());
+            }
+        } catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
+        return agents;
+    }
+
+    private String createMessageContentFromProduct(Product product) {
+        return product.getType().name() + "-" + determineProductState(product);
+    }
 
     private class SendRepairRequestBehaviour extends OneShotBehaviour {
         @Override
         public void action() {
             // Trouver les agents café de réparation
             List<AID> repairCoffees = findRepairCoffeeAgents();
+            Product selectedProduct = window.getSelectedProduct();
 
-            // Créer et envoyer un message CFP aux cafés de réparation
-            sendCFPToRepairCoffees(repairCoffees);
-        }
-
-        private List<AID> findRepairCoffeeAgents() {
-            List<AID> agents = new ArrayList<>();
-            DFAgentDescription template = new DFAgentDescription();
-            ServiceDescription sd = new ServiceDescription();
-            sd.setType("repair-coffee");
-            template.addServices(sd);
-
-            try {
-                DFAgentDescription[] result = DFService.search(myAgent, template);
-                for (DFAgentDescription agentDesc : result) {
-                    agents.add(agentDesc.getName());
-                }
-            } catch (FIPAException fe) {
-                fe.printStackTrace();
+            // Vérifier si un produit a été sélectionné
+            if (selectedProduct != null) {
+                // Préparer le contenu du message
+                String messageContent = createMessageContentFromProduct(selectedProduct);
+                // Créer et envoyer un message CFP aux cafés de réparation pour le produit sélectionné
+                sendCFPToRepairCoffees(repairCoffees, messageContent);
+            } else {
+                println("Aucun produit sélectionné pour la réparation.");
             }
-            return agents;
         }
 
-        private void sendCFPToRepairCoffees(List<AID> repairCoffees) {
-            ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
-            for (AID aid : repairCoffees) {
-                cfp.addReceiver(aid);
-            }
-            cfp.setProtocol(InteractionProtocol.FIPA_CONTRACT_NET);
-            cfp.setContent("Besoin de réparer mon ordinateur portable"); // Définir en fonction du produit
-            send(cfp);
-        }
+
     }
+
 
     private class HandleCFPResponsesBehaviour extends CyclicBehaviour {
         @Override
@@ -141,8 +149,10 @@ public class UserAgent extends GuiAgent {
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.PROPOSE);
             ACLMessage msg = myAgent.receive(mt);
             if (msg != null) {
+                String content = msg.getContent();
                 try {
-                    LocalDate proposedDate = LocalDate.parse(msg.getContent());
+                    String dateString = extractDate(content);
+                    LocalDate proposedDate = LocalDate.parse(dateString);
                     receivedProposals.put(msg.getSender(), proposedDate);
                 } catch (DateTimeParseException e) {
                     e.printStackTrace();
@@ -150,6 +160,15 @@ public class UserAgent extends GuiAgent {
             } else {
                 block();
             }
+        }
+        private String extractDate(String content) {
+            String[] parts = content.split("\\.");
+            for (String part : parts) {
+                if (part.contains("Proposed repair date")) {
+                    return part.split(":")[1].trim();
+                }
+            }
+            throw new DateTimeParseException("Date not found in content", content, 0);
         }
     }
 
@@ -206,50 +225,68 @@ public class UserAgent extends GuiAgent {
     }
 
 
-    private boolean isProductRepairable(Product product) {
-        return product.isRepairable();
-    }
 
     private class PostSelectionBehaviour extends OneShotBehaviour {
         @Override
         public void action() {
-            // Vérifiez d'abord si la liste 'products' n'est pas vide
-            if (products.isEmpty()) {
-                println("Aucun produit à traiter.");
-                return;
-            }
+            Product selectedProduct = selectProductForAction();
 
-            // Supposons que vous voulez traiter le premier produit de la liste
-            Product selectedProduct = products.get(0);
-
-            // Vérifiez si le produit sélectionné est réparable
-            if (isProductRepairable(selectedProduct)) {
-                // Si réparable, demandez une pièce de réparation
-                requestRepairPart(selectedProduct);
+            if (selectedProduct != null) {
+                if (receivedProposals.containsKey(selectedProduct)) {
+                    println("Selected product for repair: " + selectedProduct.getName());
+                    requestRepairPart(selectedProduct);
+                } else {
+                    println("Selected product for replacement: " + selectedProduct.getName());
+                    searchForNewProduct(selectedProduct.getType());
+                }
             } else {
-                // Si non réparable, recherchez un nouveau produit
-                searchForNewProduct(selectedProduct.getType());
+                println("No products available for action.");
             }
         }
-    }
 
-
-
-    private void requestRepairPart(Product product) {
-        List<AID> partStores = findPartStores(); // Trouver les PartStoreAgent
-
-        ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
-        for (AID store : partStores) {
-            cfp.addReceiver(store);
+        private Product selectProductForAction() {
+            return products.stream()
+                    .filter(p -> receivedProposals.containsKey(p))
+                    .min(Comparator.comparing(p -> receivedProposals.get(p)))
+                    .orElse(null);
         }
-        cfp.setContent("Demande de pièce pour : " + product.getName());
-        cfp.setProtocol(InteractionProtocol.FIPA_CONTRACT_NET);
-        send(cfp);
     }
+
+
+    /** Demande une pièce de réparation aux magasins de pièces détachées.*/
+    private void requestRepairPart(Product product) {
+        List<AID> partStores = findPartStores();
+        if (!partStores.isEmpty()) {
+            ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+            for (AID store : partStores) {
+                cfp.addReceiver(store);
+                println("Sending CFP to Part Store: " + store.getName());
+            }
+            cfp.setContent(product.getName());
+            cfp.setProtocol(InteractionProtocol.FIPA_CONTRACT_NET);
+            send(cfp);
+        } else {
+            println("No Part Store Agents found.");
+        }
+    }
+
 
     private List<AID> findPartStores() {
         List<AID> partStores = new ArrayList<>();
-        // Logique pour trouver les PartStoreAgent dans le DF (Directory Facilitator)
+        DFAgentDescription template = new DFAgentDescription();
+        ServiceDescription sd = new ServiceDescription();
+        sd.setType("part-store");
+        sd.setName("part-store");
+        template.addServices(sd);
+
+        try {
+            DFAgentDescription[] result = DFService.search(this, template);
+            for (DFAgentDescription agentDesc : result) {
+                partStores.add(agentDesc.getName());
+            }
+        } catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
         return partStores;
     }
 
@@ -257,7 +294,7 @@ public class UserAgent extends GuiAgent {
         List<AID> distributors = new ArrayList<>();
         DFAgentDescription template = new DFAgentDescription();
         ServiceDescription sd = new ServiceDescription();
-        sd.setType("distributor-service");
+        sd.setType("product-distribution");
         template.addServices(sd);
 
         try {
@@ -278,22 +315,12 @@ public class UserAgent extends GuiAgent {
         ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
         for (AID distributor : distributors) {
             cfp.addReceiver(distributor);
+            println("Sending CFP to Distributor: " + distributor.getName());
         }
-        cfp.setContent("Recherche de nouveau produit de type : " + type);
+        cfp.setContent(type.toString());
         cfp.setProtocol(InteractionProtocol.FIPA_CONTRACT_NET);
         send(cfp);
     }
-
-
-
-
-
-
-
-
-
-
-
 
 
     /**the window sends an evt to the agent*/
@@ -309,8 +336,36 @@ public class UserAgent extends GuiAgent {
             for(AID aid:coffees)
                 println("found this repair coffee : " + aid.getLocalName());
             println("-".repeat(30));
-            //TODO: Up to you to omplete the project....
+
+            // Obtenez le produit sélectionné par l'utilisateur
+            Product selectedProduct = (Product) window.getSelectedProduct();
+            if (selectedProduct != null) {
+                // Envoyer un appel CFP pour le produit sélectionné
+                sendCFPForSelectedProduct(selectedProduct);
+            } else {
+                println("No product selected.");
+            }
+
         }
+    }
+
+    private void sendCFPToRepairCoffees(List<AID> repairCoffees, String messageContent) {
+        ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
+        for (AID aid : repairCoffees) {
+            cfp.addReceiver(aid);
+        }
+        cfp.setProtocol(InteractionProtocol.FIPA_CONTRACT_NET);
+        cfp.setContent(messageContent);
+        send(cfp);
+    }
+
+    // Méthode pour envoyer un CFP pour le produit sélectionné
+    private void sendCFPForSelectedProduct(Product selectedProduct) {
+        List<AID> repairCoffees = findRepairCoffeeAgents();
+        // Inclure à la fois le type de produit et son état dans le contenu du message
+        String messageContent = selectedProduct.getType().name() + "-" + determineProductState(selectedProduct);
+        println("Sending CFP with content: " + messageContent);
+        sendCFPToRepairCoffees(repairCoffees, messageContent);
     }
 
     public void println(String s){window.println(s);}

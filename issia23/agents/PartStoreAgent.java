@@ -29,7 +29,7 @@ public class PartStoreAgent extends AgentWindowed {
         // Configuration de l'interface utilisateur graphique pour cet agent.
         this.window = new SimpleWindow4Agent(getLocalName(), this);
         this.window.setBackgroundTextColor(Color.LIGHT_GRAY);
-        AgentServicesTools.register(this, "repair", "part-store");
+        AgentServicesTools.register(this, "part-store", "part-store");
         println("hello, I'm just registered as a parts-store");
         println("do you want some special parts ?");
 
@@ -45,12 +45,17 @@ public class PartStoreAgent extends AgentWindowed {
         if (parts.isEmpty()) {
             parts.add(existingParts.get(hasard.nextInt(existingParts.size())));
         }
-        println("here are the parts I sell : ");
+        println("Generated " + parts.size() + " parts. Here are the parts I sell: ");
         parts.forEach(p -> println("\t" + p));
 
         // Enregistrement de l'agent dans les pages jaunes JADE.
-        AgentServicesTools.register(this, "repair", "part-store");
-
+        try {
+            AgentServicesTools.register(this, "part-store", "part-store");
+            println("Successfully registered as a parts-store in JADE yellow pages.");
+        } catch (Exception e){
+            println("Error registering as a parts-store: " + e.getMessage());
+            e.printStackTrace();
+        }
         // Ajout d'un comportement pour écouter et répondre aux demandes de pièces.
         addBehaviour(new HandlePartRequestsBehaviour());
     }
@@ -67,6 +72,8 @@ public class PartStoreAgent extends AgentWindowed {
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
             ACLMessage msg = myAgent.receive(mt);
             if (msg != null) {
+                println("Received CFP from: " + msg.getSender().getName());
+                println("CFP content: " + msg.getContent());
                 // Analyse de la demande de pièce.
                 String requestedPart = msg.getContent();
                 ACLMessage reply = msg.createReply();
@@ -74,6 +81,7 @@ public class PartStoreAgent extends AgentWindowed {
                 // Vérification de la disponibilité de la pièce demandée.
                 Part availablePart = parts.stream().filter(p -> p.getName().equals(requestedPart)).findFirst().orElse(null);
                 if (availablePart != null) {
+                    println("Part available, sending proposal.");
                     // Si la pièce est disponible.
                     reply.setPerformative(ACLMessage.PROPOSE);
                     String responseContent = String.format("Part available: %s. Estimated delivery time: %d days. Cost: %.2f€",
@@ -82,6 +90,7 @@ public class PartStoreAgent extends AgentWindowed {
                             availablePart.getStandardPrice());
                     reply.setContent(responseContent);
                 } else {
+                    println("Part not available, sending refusal.");
                     // Refus si la pièce n'est pas disponible.
                     reply.setPerformative(ACLMessage.REFUSE);
                     reply.setContent("Part not available: " + requestedPart);

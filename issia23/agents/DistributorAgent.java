@@ -37,10 +37,9 @@ public class DistributorAgent extends AgentWindowed {
 
         // Initialisation des produits disponibles
         availableProducts = new ArrayList<>();
-
-        // Exemple d'ajout de produits à la liste
         availableProducts.add(new Product("Mouse", ProductType.Mouse));
         availableProducts.add(new Product("CoffeeMaker", ProductType.coffeeMaker));
+        println("Available products: " + availableProducts);
 
         // Enregistrement dans le Directory Facilitator (DF)
         DFAgentDescription dfd = new DFAgentDescription();
@@ -49,9 +48,13 @@ public class DistributorAgent extends AgentWindowed {
         sd.setType("product-distribution");
         sd.setName(getLocalName() + "-product-distribution");
         dfd.addServices(sd);
+
         try {
             DFService.register(this, dfd);
+            println("Agent successfully registered with Directory Facilitator.");
+
         } catch (Exception e) {
+            println("Failed to register agent with Directory Facilitator: " + e.getMessage());
             e.printStackTrace();
         }
 
@@ -66,6 +69,8 @@ public class DistributorAgent extends AgentWindowed {
 
             ACLMessage msg = myAgent.receive(mt);
             if (msg != null) {
+                println("Received REQUEST from: " + msg.getSender().getName());
+                println("REQUEST content: " + msg.getContent());
                 // Récupération du contenu du message (nom du produit demandé)
                 String content = msg.getContent();
                 ACLMessage reply = msg.createReply();
@@ -74,6 +79,7 @@ public class DistributorAgent extends AgentWindowed {
                 // Vérification de la disponibilité du produit demandé
                 for (Product product : availableProducts) {
                     if (product.getName().equals(content)) {
+                        println("Product found, sending proposal.");
                         reply.setPerformative(ACLMessage.PROPOSE);
                         // Utiliser la constante STANDARD_DELIVERY_TIME pour le délai de livraison
                         String responseContent = "Product available: " + content +
@@ -84,6 +90,7 @@ public class DistributorAgent extends AgentWindowed {
                     }
                 }
                 if (!productFound) {
+                    println("Product not found, sending refusal.");
                     reply.setPerformative(ACLMessage.REFUSE);
                     reply.setContent("Product not available: " + content);
                 }
