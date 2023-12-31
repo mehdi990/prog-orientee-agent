@@ -20,22 +20,30 @@ Ce diagramme de classe détaille les classes principales de notre simulation, le
 
 ## Fonctionnement et Difficultés
 ### Ce qui fonctionne :
-- Communication initiale entre `UserAgent` et `RepairCoffeeAgent`.
-- TODO...
+- Les agents peuvent communiquer entre eux en utilisant le protocole de communication FIPA.
+- Les agents UserAgent sont capables de générer et d'envoyer des demandes de réparation à RepairCoffeeAgent.
+- Les agents RepairCoffeeAgent peuvent recevoir des demandes de réparation et y répondre en proposant une date de réparation et un coût estimé.
+- Les interactions entre UserAgent et PartStoreAgent/DistributorAgent sont programmées pour déclencher des demandes de pièces ou de produits, mais l'exécution semble incomplète ou incohérente.
   
 ### Difficultés rencontrées :
 - Implémenter la logique de décision dynamique dans `UserAgent` a été un défi.
-- Gérer les différents formats de messages entre les agents a nécessité des ajustements.
 - Creation des fenetres GUI pour les distributeurs.
 - Difficulté à comprendre comment les agents fonctionnent indépendamment et comment ils exécutent leurs tâches.
-- Au début c‘était un peu difficile de comprendre comment les agents communiquent et échangent des informations
+- Au début c‘était un peu difficile de comprendre comment les agents communiquent et échangent des informations.
+- Manque d'interaction cohérente entre certains agents, notamment les `PartStoreAgent` et `DistributorAgent`, qui ne répondent pas toujours comme prévu.
+- La complexité de la gestion des différents types de messages et des protocoles d'interaction.
+- Difficulté à suivre l'état actuel des propositions de réparation et à décider des actions suivantes dans l'agent `UserAgent`.
+- Difficultés à débugger les interactions asynchrones entre agents.
+
 
 ### Améliorations souhaitées :
-- Une meilleure personnalisation des réponses des agents `RepairCoffeeAgent` et `PartStoreAgent`.
+- Une meilleure intégration et test des interactions entre `PartStoreAgent` et `DistributorAgent` pour assurer que les CFP et les demandes soient bien traitées et que les réponses soient correctement interprétées.
 - Implémentation d'un système de feedback pour améliorer les propositions basées sur les préférences des utilisateurs.
 - Implémentation des algorithmes de prise de décision plus avancés pour les agents, permettant une meilleure adaptation aux différentes situations. Par exemple, utiliser des techniques d'apprentissage automatique pour que les agents apprennent des interactions passées.
-- Ajout de la capacité de simuler différents scénarios de réparation, avec des variables ajustables comme la gravité des dommages, la disponibilité des pièces, ou les compétences des agents de réparation.
-- Intégration d‘un mécanisme pour gérer les conflits et négociations entre agents, comme des situations où plusieurs agents veulent la même pièce ou lorsqu'il y a des désaccords sur les coûts de réparation.
+- Renforcement de la logique de sélection du produit pour réparation ou remplacement, afin qu'elle soit plus dynamique et prenne en compte plus de critères, comme la gravité de l'état du produit et la proximité de la date de réparation proposée
+
+## Conclusion
+Le projet a atteint une étape où la communication de base entre les agents est établie, mais il reste encore du travail pour que le système soit pleinement opérationnel selon les objectifs initiaux. Les améliorations identifiées représentent des opportunités pour rendre le système plus robuste et efficace. Ce projet a mis en lumière l'importance d'une conception et d'une planification minutieuses, ainsi que la nécessité d'un débogage approfondi lors de la création de systèmes multi-agents complexes.
 
 ## Auteurs
 - EL MOUDEN EL MEHDI
